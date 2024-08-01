@@ -15,12 +15,10 @@ namespace EGISZtemplatesAPI.Controllers
     public class TemplatesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly TemplateSettings _templateSettings;
 
-        public TemplatesController(ApplicationDbContext context, IOptions<TemplateSettings> templateSettings)
+        public TemplatesController(ApplicationDbContext context)
         {
             _context = context;
-            _templateSettings = templateSettings.Value;
         }
 
         // GET: api/Templates
@@ -28,11 +26,17 @@ namespace EGISZtemplatesAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Template>>> GetTemplates()
         {
-            return await _context.Templates.ToListAsync();
+            return await _context.Templates.Select(t => new Template
+            {
+                Id = t.Id,
+                TemplateFilename = t.TemplateFilename,
+                LastUpdated = t.LastUpdated,
+                Version = t.Version
+            }).ToListAsync();
         }
 
         // GET: api/Templates/{id}
-        // Возвращает конкретный шаблон
+        // Возвращает информацию о конкретном шаблоне
         [HttpGet("{id}")]
         public async Task<ActionResult<Template>> GetTemplate(int id)
         {
@@ -43,36 +47,27 @@ namespace EGISZtemplatesAPI.Controllers
                 return NotFound();
             }
 
-            return template;
+            return new Template
+            {
+                Id = template.Id,
+                TemplateFilename = template.TemplateFilename,
+                LastUpdated = template.LastUpdated,
+                Version = template.Version
+            };
         }
 
         // GET: api/Templates/Download/{id}
         // Возвращает файл шаблона
         [HttpGet("Download/{id}")]
-        public async Task<IActionResult> DownloadTemplate(int id)
+        public async Task<ActionResult<byte[]>> DownloadTemplate(int id)
         {
             var template = await _context.Templates.FindAsync(id);
-
             if (template == null)
             {
                 return NotFound();
             }
 
-            var filePath = Path.Combine(_templateSettings.TemplateDirectory, template.TemplateFilename);
-            
-            if (!System.IO.File.Exists(filePath))
-            {
-                return NotFound();
-            }
-
-            var memory = new MemoryStream();
-            using (var stream = new FileStream(filePath, FileMode.Open))
-            {
-                await stream.CopyToAsync(memory);
-            }
-            memory.Position = 0;
-
-            return File(memory, "application/octet-stream", template.TemplateFilename);
+            return template.Content;
         }
     }
 }
