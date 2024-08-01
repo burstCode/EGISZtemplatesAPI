@@ -67,7 +67,7 @@ namespace EGISZtemplatesAPI.Controllers
                 return NotFound();
             }
 
-            return template.Content;
+            return File(template.Content, "application/octet-stream", template.TemplateFilename);
         }
     }
 }
